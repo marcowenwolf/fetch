@@ -20,6 +20,11 @@ from torcheval.metrics.functional import binary_precision, binary_recall, binary
 from fetch.pulsar_data import PulsarData, printObsCounts
 from fetch.model import PulsarModel, TorchvisionModel
 
+# Added by Marc:
+import gc
+gc.collect()
+torch.cuda.empty_cache()
+
 # Use GPU if available
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -181,6 +186,7 @@ def main() -> None:
     r""" Entry point for running via command line
     Trains a combined model for pulsar prediction
     """
+    print("Start Training method")
     parser = argparse.ArgumentParser(
         description="Fast Extragalactic Transient Candiate Hunter (FETCH)"
     )
@@ -242,17 +248,21 @@ def main() -> None:
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
 
     print(f"Using {DEVICE} for computation", flush=True)
-
+    print("Current Directory: ", os.getcwd())
     # Load training and split 85% to 15% into train/validate
+    print(f"Loading all training data")
     train_data_files = glob.glob(args.train_data_dir + "/*.h*5")
     train_data = PulsarData(files=train_data_files)
     train_data, validate_data = random_split(train_data, [0.85, 0.15])
 
+    print(f"Loading Training Data after split", flush=True)
     tr_dataloader = DataLoader(train_data, batch_size=args.batch_size, pin_memory=True, shuffle=True)
+    print(f"Loading Validation Data after split", flush=True)
     v_dataloader = DataLoader(validate_data, batch_size=args.batch_size, pin_memory=True, shuffle=False)
     
     # Train over different hyperparameters of k from 2^5 to 2^9
-    k_hyperparameter = [2**5, 2**6, 2**7, 2**8, 2**9]
+    # k_hyperparameter = [2**5, 2**6, 2**7, 2**8, 2**9]
+    k_hyperparameter = [2**6]
 
     best_model_path = ""
     best_vloss = float('inf')
@@ -260,23 +270,28 @@ def main() -> None:
 
     for k in k_hyperparameter:
         print(f"\nTraining run for k={k}", flush=True)
-        
+
         # Load saved weights for freq model, ignoring classifier layer
         # because we're replacing it with new layer with different num features
         freq_model = TorchvisionModel(args.freq_model, k, args.unfrozen_freq)
         freq_model_path = f"model_weights/{args.freq_model}_freq.pth"
+        if not os.path.isfile(freq_model_path):
+            torch.save(freq_model.state_dict(), freq_model_path)
         state_dict = torch.load(freq_model_path, weights_only=True)
         new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("model.classifier")}
         freq_model.load_state_dict(new_state_dict, strict=False)
 
+            
         # Load saved weights for freq model, ignoring classifier layer
         # because we're replacing it with new layer with different num features
         dm_model = TorchvisionModel(args.dm_model, k, args.unfrozen_dm)
         dm_model_path = f"model_weights/{args.dm_model}_dm.pth"
+        if not os.path.isfile(dm_model_path):
+            torch.save(dm_model.state_dict(), dm_model_path)
         state_dict = torch.load(dm_model_path, weights_only=True)
         new_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("model.classifier")}
         dm_model.load_state_dict(new_state_dict, strict=False)
-
+        
         # Setup combined model
         model = PulsarModel(freq_model, dm_model, k).to(DEVICE)
 
