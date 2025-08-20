@@ -27,7 +27,7 @@ def main():
     parser.add_argument(
         "-g",
         "--gpu_id",
-        help="GPU ID (use -1 for CPU)",
+        help="GPU ID",
         type=int,
         required=False,
         default=0,
@@ -44,6 +44,13 @@ def main():
         "-b", "--batch_size", help="Batch size for making predictions", default=64, type=int
     )
     parser.add_argument(
+        "-d", 
+        "--data_type", 
+        help="Type of data to use for predicting: both (DEFAULT), freq, dm", 
+        default="both", 
+        type=str
+    )
+    parser.add_argument(
         "-w", "--weights", help="Directory containing model weights", required=True
     )
     parser.add_argument(
@@ -58,44 +65,43 @@ def main():
 
     # Get the model and set it to eval mode
     model = PulsarModel()
-    path = os.path.split(__file__)[0]
     model.load_state_dict(torch.load(f"{args.weights}/DenseNet201_DenseNet201_64.pth", weights_only=True))
     model.eval()
     model.to(DEVICE)
     
+    # Get all the candidate files
     for data_dir in args.data_dir:
 
-        # Get all our candidate files
         cands_to_eval = glob.glob(f"{data_dir}/*h*5")
 
         if len(cands_to_eval) == 0:
             print(f"No candidates to evaluate in directory: {data_dir}", flush=True)
             continue
 
-        # Setup the candidate data
-        inputs = PulsarData(files=cands_to_eval)
-        dataloader = DataLoader(inputs, batch_size=args.batch_size, pin_memory=True, shuffle=False)
+    # Setup the candidate data
+    inputs = PulsarData(files=cands_to_eval)
+    dataloader = DataLoader(inputs, batch_size=args.batch_size, pin_memory=True, shuffle=False)
 
-        # Make predictions in batches
-        predictions = []
-        probs = []
-        with torch.no_grad():
-            for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
-                freq_data = freq_data.to(DEVICE, non_blocking=True)
-                dm_data = dm_data.to(DEVICE, non_blocking=True)
+    # Make predictions in batches
+    predictions = []
+    probs = []
+    with torch.no_grad():
+        for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
+            freq_data = freq_data.to(DEVICE, non_blocking=True)
+            dm_data = dm_data.to(DEVICE, non_blocking=True)
 
-                predicted = model(freq_data, dm_data)
+            predicted = model(freq_data, dm_data)
 
-                predicted = predicted.to('cpu').numpy()
-                probs.extend(predicted)
-                predictions.extend(np.round(predicted >= args.probability))
+            predicted = predicted.to('cpu').numpy()
+            probs.extend(predicted)
+            predictions.extend(np.round(predicted >= args.probability))
 
-        # Save the results
-        print(f"Saving final results", flush=True)
-        results_dict = {}
-        results_dict["candidate"] = cands_to_eval
-        results_dict["probability"] = probs
-        results_dict["label"] = predictions
+    # Save the results
+    print(f"Saving final results", flush=True)
+    results_dict = {}
+    results_dict["candidate"] = cands_to_eval
+    results_dict["probability"] = probs
+    results_dict["label"] = predictions
 
-        results_file = data_dir + f"/results_full_model.csv"
-        pd.DataFrame(results_dict).to_csv(results_file)
+    results_file = data_dir + f"/results_full_model.csv"
+    pd.DataFrame(results_dict).to_csv(results_file)

@@ -1,90 +1,57 @@
 # FETCH
+## NOTE THIS IS A WORK IN PROGRESS
 
-This is a `PyTorch` version of FETCH based on the original version found [here]().  There are several key differences
+**6/7/2025: 
+Currently cleaning up code, adding some additional features and such in the devel branch.  I hope to release a stable version of this code within the next week**
 
-1. Only DenseNet and VGG models were used for transfer training
-    - These were readily available through TorchVision and most of the original FETCH models were based on these two groups
-    - Torchvision had some but not all of the other models used (e.g. XCeption)
-    - You can add other models as you like by modifying (See the comments in `model.py`)
-2. Only a single final combined model was built
-    - Partly due to using fewer pre-trained models
-    - Partly due to simplifying software usage since it wasn't clear
-    under which data conditions you would choose one model over another
-3. Allows you to do predictions using only frequency or DM data
-    - Testing showed that using only DM data for predictions was very effective (see `train_results.xlxs')
-    - Prediction is done using one of the individaul transfer-trained CNN models
+This is a `PyTorch` version of FETCH based on the original version found [here](https://github.com/devanshkv/fetch).
+This version is provided a
 
-All models here were trained and tested using the original FETCH data available at [astro.phys.wvu.edu/fetch](http://astro.phys.wvu.edu/fetch/).
+There are several key differences between this version and the original version of FETCH
 
+1. The code only works for pre-trained models available in Pytorch Vision
+    - Currenlty only pre-trained DenseNet and VGG models were used for transfer training
+    - TorchVision has some but not all of the other models used (e.g. XCeption)
+    - See the section below for guidelines on how to extend to use other models
+2. Predictions can be done based on just frequency data, just DM data, or both
+3. Models must be downloaded for local use and are available through Globus [here]()
+    - If you do not currenlty have a Globus login, you can get one for free
+    - All models here were trained and tested using the original FETCH data 
+      available at [astro.phys.wvu.edu/fetch](http://astro.phys.wvu.edu/fetch/).
+4. Training and predicting is done on .h*5 files.
+    - Those files can contain single or multiple observations
+    - The file must contain at least data labeled as data_freq_time and data_dm_time
+    - It may also contain data_labels for training data to indicate an observation
+      is or is not a pulsar
+    - For more details on the structure of the data, see the code in pulsar_data.py
+5. There are some training and model differences (minor as far as I can tell) due simply
+   to differences between Keras/Tensorflow and Pytorch
 
-Install 
+Installation
 ---
 Code:
-    git clone https://github.com/devanshkv/fetch.git
+    git clone 
     cd fetch
     python -m pip install .
 
-Models should be dowloaded here
+Models: 
+    Must be downloaded for local use.
+    Models are accessible through Globus [here]()
 
-Usage
+Training
 ---
-To use fetch, you would first have to create candidates. Use [`your`](https://thepetabyteproject.github.io/your/) for this purpose, [this notebook](https://thepetabyteproject.github.io/your/ipynb/Candidate/) explains the whole process. Your also comes with a command line script [`your_candmaker.py`](https://thepetabyteproject.github.io/your/bin/your_candmaker/) which allows you to use CPU or single/multiple GPUs. 
-
-To predict a candidate h5 files living in the directory `/data/candidates/` use `predict.py` for model `a` as follows:
-
-    predict.py --data_dir /data/candidates/ --model a
-        
-To fine-tune the model `a`, with a bunch of candidates, put them in a pandas readable csv, `candidate.csv` with headers 'h5' and 'label'. Use
-
-    train.py --data_csv candidates.csv --model a --output_path ./
-        
-This would train the model `a` and save the training log, and model weights in the output path.
-
-Example
----
-
-Test filterbank data can be downloaded from [here](http://astro.phys.wvu.edu/files/askap_frb_180417.tgz). The folder contains three filterbanks: 28.fil  29.fil  34.fil.
-Heimdall results for each of the files are as follows:
-
-for 28.fil
-
-    16.8128	1602	2.02888	1	127	475.284	22	1601	1604
-for 29.fil
-
-    18.6647	1602	2.02888	1	127	475.284	16	1601	1604
-for 34.fil
-
-    13.9271	1602	2.02888	1	127	475.284	12	1602	1604 
-
-The `cand.csv` would look like the following:
-
-    file,snr,stime,width,dm,label,chan_mask_path,num_files
-    28.fil,16.8128,2.02888,1,475.284,1,,1
-    29.fil,18.6647,2.02888,1,475.284,1,,1
-    34.fil,13.9271,2.02888,1,475.284,1,,1
-
-Running `your_candmaker.py` will create three files:
-
-    cand_tstart_58682.620316710374_tcand_2.0288800_dm_475.28400_snr_13.92710.h5
-    cand_tstart_58682.620316710374_tcand_2.0288800_dm_475.28400_snr_16.81280.h5
-    cand_tstart_58682.620316710374_tcand_2.0288800_dm_475.28400_snr_18.66470.h5
-
-Running `predict.py` with model `a` will give `results_a.csv`:
-
-    ,candidate,probability,label
-    0,cand_tstart_58682.620316710374_tcand_2.0288800_dm_475.28400_snr_18.66470.h5,1.0,1.0
-    1,cand_tstart_58682.620316710374_tcand_2.0288800_dm_475.28400_snr_16.81280.h5,1.0,1.0
-    2,cand_tstart_58682.620316710374_tcand_2.0288800_dm_475.28400_snr_13.92710.h5,1.0,1.0
     
-Training Data
+Predicting
 ---
 
-The training data is available at [astro.phys.wvu.edu/fetch](http://astro.phys.wvu.edu/fetch/).
+Extending Pytorch FECTH
+---
 
-## Citating this work
-___
+Citing this work
+---
 
-If you use this work please cite:
+If you use this code I would ask you cite both of the following which includes
+the original FETCH:
 
     @article{Agarwal2020,
       doi = {10.1093/mnras/staa1856},
@@ -96,15 +63,9 @@ If you use this work please cite:
       title = {{FETCH}: A deep-learning based classifier for fast transient classification},
       journal = {Monthly Notices of the Royal Astronomical Society}
     }
-    @software{agarwal_aggarwal_2020,
-      author       = {Devansh Agarwal and
-                      Kshitij Aggarwal},
-      title        = {{devanshkv/fetch: Software release with the 
-                       manuscript}},
-      month        = jun,
-      year         = 2020,
-      publisher    = {Zenodo},
-      version      = {0.1.8},
-      doi          = {10.5281/zenodo.3905437},
-      url          = {https://doi.org/10.5281/zenodo.3905437}
+    @software{
+        author      = {Weaver, Tony},
+        title       = {Pytorch FETCH [source code]},
+        year        = 2025,
+        url         = {}
     }
