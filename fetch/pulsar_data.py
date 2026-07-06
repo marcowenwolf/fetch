@@ -4,15 +4,12 @@ import sys
 import h5py
 
 import torch
-import torch.nn as nn
 from torch.utils.data import Dataset
 import torchvision.transforms.v2 as T
 
 import numpy as np
 import scipy.signal as s
 
-import glob
-from torch.utils.data import DataLoader
 
 __all__ = [
     "printObsCounts",
@@ -101,8 +98,8 @@ class PulsarData(Dataset):
         if "data_dm_time" not in data:
             print(f"ERROR: {file} does not contain data with name data_dm_data", flush=True)
             sys.exit(1)
-        freq_data = torch.tensor(np.array(data["data_freq_time"][:]))
-        dm_data = torch.tensor(np.array(data["data_dm_time"][:]))
+        freq_data = torch.tensor(np.array(data["data_freq_time"][:4096]))
+        dm_data = torch.tensor(np.array(data["data_dm_time"][:4096]))
 
         # Do a few basic data checks
         freq_data_shape = freq_data.shape
@@ -114,7 +111,7 @@ class PulsarData(Dataset):
         freq_data_len = len(freq_data.shape)
         dm_data_len = len(dm_data.shape)
         if freq_data_len != dm_data_len:
-            print(f"ERROR: freq({freq_data_size}) and dm data({dm_data_size}) formats do not match")
+            print(f"ERROR: freq({freq_data_len}) and dm data({dm_data_len}) formats do not match")
             sys.exit(1)
         
         """ Need to handle different .h5 data size situations
@@ -147,7 +144,7 @@ class PulsarData(Dataset):
             dm_data.unsqueeze_(0)
             dm_data.unsqueeze_(0)
         else:
-            print(f"ERROR: {file} contains one or more observations in an unexpected format...{data_shape}", flush=True)
+            print(f"ERROR: {file} contains one or more observations in an unexpected format...{dm_data_shape}", flush=True)
             sys.exit(1)
 
         # All the data should be NCWH format at this point
