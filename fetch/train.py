@@ -1,8 +1,6 @@
 import argparse
 import os
-import string
 import glob
-import sys
 from shutil import copy
 
 import numpy as np
@@ -13,7 +11,6 @@ from torch.nn.modules.loss import _Loss
 from torch.optim import Optimizer
 
 from torch.utils.data import DataLoader, random_split
-from torchvision import datasets
 
 from torcheval.metrics.functional import binary_precision, binary_recall, binary_f1_score
 
@@ -103,7 +100,7 @@ def validate_loop(dataloader: DataLoader,
     # Evaluating the model with torch.no_grad() ensures 
     # that no gradients are computed during validation
     with torch.no_grad():
-        for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
+        for _, (freq_data, dm_data, labels) in enumerate(dataloader):
 
             # Load labels to device
             labels = labels.to(DEVICE, non_blocking=True)
@@ -146,15 +143,13 @@ def test(dataloader: DataLoader, model: nn.Module) -> None:
     """
     # Set the model to evaluation mode - important for batch normalization and dropout layers
     model.eval()
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)
     truth = []
     predictions = []
 
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
-        for batch_idx, (freq_data, dm_data, labels) in enumerate(dataloader):
+        for _, (freq_data, dm_data, labels) in enumerate(dataloader):
              
             # Load labels to device
             labels = labels.to(DEVICE, non_blocking=True)

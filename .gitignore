@@ -12,3 +12,5 @@ fetch/tmp.txt
 fetch/model_info.py
 tmp_code.txt
 ~$train_results.xlsx
+/.project
+/.pydevproject
